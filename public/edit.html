@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Secure Photo Editor</title>
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" rel="stylesheet">
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
+    #canvasWrap { max-width: 700px; }
+    img { max-width: 100%; }
+    .row { margin: 10px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+    button { padding: 8px 12px; cursor: pointer; }
+    input[type="email"] { padding: 6px; }
+    .muted { color:#666; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>Secure Photo Editor</h2>
+  <div class="muted" id="who"></div>
+
+  <div id="canvasWrap">
+    <img id="img" alt="image" />
+  </div>
+
+  <div class="row">
+    <button id="btnZoomIn">Zoom +</button>
+    <button id="btnZoomOut">Zoom -</button>
+    <button id="btnRotateL">Rotate ⟲</button>
+    <button id="btnRotateR">Rotate ⟳</button>
+    <button id="btnReset">Reset</button>
+    <button id="btnSave">Save Crop</button>
+  </div>
+
+  <div id="status" class="muted"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const token = qs.get("token");
+    if (!token) {
+      document.body.innerHTML = "<p>Missing token.</p>";
+      throw new Error("No token");
+    }
+
+    const who = document.getElementById("who");
+    fetch("/api/me?token=" + encodeURIComponent(token))
+      .then(r => r.json())
+      .then(d => who.textContent = `Recipient: ${d.recipientEmail} | File: ${d.fileId}`)
+      .catch(() => {});
+
+    const img = document.getElementById("img");
+    img.src = "/api/image?token=" + encodeURIComponent(token);
+
+    let cropper;
+    img.addEventListener("load", () => {
+      cropper = new Cropper(img, { viewMode: 1, autoCropArea: 1, dragMode: 'move' });
+    });
+
+    document.getElementById("btnZoomIn").onclick = () => cropper.zoom(0.1);
+    document.getElementById("btnZoomOut").onclick = () => cropper.zoom(-0.1);
+    document.getElementById("btnRotateL").onclick = () => cropper.rotate(-90);
+    document.getElementById("btnRotateR").onclick = () => cropper.rotate(90);
+    document.getElementById("btnReset").onclick = () => cropper.reset();
+
+    document.getElementById("btnSave").onclick = async () => {
+      const dataUrl = cropper.getCroppedCanvas({ maxWidth: 2000, maxHeight: 2000 }).toDataURL("image/png");
+      const res = await fetch("/api/save?token=" + encodeURIComponent(token), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageData: dataUrl })
+      });
+      const json = await res.json();
+      document.getElementById("status").textContent = json.savedAs ? ("Saved as: " + json.savedAs) : (json.error || "Error");
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Upload & Share</title></head>
+<body>
+  <h3>Upload Photo</h3>
+  <input type="file" id="file" accept="image/*" />
+  <input type="email" id="email" placeholder="recipient@example.com" />
+  <button id="go">Upload & Get Edit Link</button>
+  <p id="out"></p>
+  <script>
+    document.getElementById("go").onclick = async () => {
+      const f = document.getElementById("file").files[0];
+      const email = document.getElementById("email").value.trim();
+      if (!f || !email) return alert("Pick file and enter email");
+      const fd = new FormData(); fd.append("image", f);
+      const up = await fetch("/api/upload", { method: "POST", body: fd }).then(r => r.json());
+      if (!up.fileId) return alert("Upload failed");
+      const origin = location.origin;
+      const share = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: up.fileId, recipientEmail: email, origin })
+      }).then(r => r.json());
+      document.getElementById("out").innerHTML =
+        share.url ? `Share this secure edit link:<br><a href="${share.url}" target="_blank">${share.url}</a>` : "Share failed";
+    };
+  </script>
+</body>
+</html>
