@@ -6,8 +6,9 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 const nodemailer = require("nodemailer");
-app.use(express.static("public"));
 const app = express();
+app.use(express.static("public"));
+
 app.use(cors());
 app.use(express.json({ limit: "20mb" }));
 app.use(express.static("public"));
